@@ -2,7 +2,6 @@ package org.wso2.rule.validator.functions.core;
 
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.TestInstance;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
 import org.junit.jupiter.params.provider.MethodSource;
@@ -305,7 +304,8 @@ public class CasingFunctionTest {
                     try {
                         boolean result = casingFunction.execute(new LintTarget(new ArrayList<>(), input));
                         assertTrue(result,
-                                "Expected valid input '" + input + "' to pass Pascal casing validation without digits.");
+                                "Expected valid input '" + input
+                                        + "' to pass Pascal casing validation without digits.");
                     } catch (InvalidRulesetException e) {
                         fail("Execution should not throw an exception for input: " + input);
                     }
