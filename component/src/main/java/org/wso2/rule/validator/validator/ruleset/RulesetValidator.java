@@ -310,7 +310,7 @@ public abstract class RulesetValidator {
 
     private static boolean validateJsonPath(String jsonPath) {
         try {
-            if (!jsonPath.startsWith("$")) {
+            if (!jsonPath.startsWith(Constants.JSON_PATH_ROOT)) {
                 return false;
             }
 

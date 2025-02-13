@@ -148,7 +148,7 @@ public class CasingFunction extends LintFunction {
         String pattern = basePattern.replace("{__DIGITS__}", allowdigits ? digitPattern : "");
 
         if (!options.containsKey(Constants.RULESET_CASING_SEPARATOR)) {
-            return "^" + pattern + "$";
+            return "^" + pattern + Constants.JSON_PATH_ROOT;
         }
 
         Map<String, Object> separator = (Map<String, Object>) options.get(Constants.RULESET_CASING_SEPARATOR);
