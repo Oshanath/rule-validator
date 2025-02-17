@@ -75,16 +75,40 @@ public class CasingFunction extends LintFunction {
                 }
 
                 Map<String, Object> separator = (Map<String, Object>) options.get(entry.getKey());
+
+                if (!separator.containsKey(Constants.RULESET_CASING_SEPARATOR_CHAR) && !separator.containsKey(Constants.RULESET_CASING_SEPARATOR_ALLOW_LEADING)) {
+                    errors.add("The separator object should not be empty if it is defined.");
+                }
+
+                if (separator.containsKey(Constants.RULESET_CASING_SEPARATOR_ALLOW_LEADING) && !separator.containsKey(Constants.RULESET_CASING_SEPARATOR_CHAR)) {
+                    errors.add("Separator char must be present if allowLeading is specified.");
+                }
+
                 if (separator.containsKey(Constants.RULESET_CASING_SEPARATOR_CHAR) &&
                         !(separator.get(Constants.RULESET_CASING_SEPARATOR_CHAR) instanceof String)) {
                     errors.add("The '" + Constants.RULESET_CASING_SEPARATOR_CHAR +
                             "' key in the '" + Constants.RULESET_CASING_SEPARATOR + "' option should be a string.");
+                }
+                if (separator.containsKey(Constants.RULESET_CASING_SEPARATOR_CHAR) && separator.get(Constants.RULESET_CASING_SEPARATOR_CHAR) == null) {
+                    errors.add("Separator char should not be null");
+                    return errors;
+                }
+                if (separator.containsKey(Constants.RULESET_CASING_SEPARATOR_CHAR) && ((String)separator.get(Constants.RULESET_CASING_SEPARATOR_CHAR)).length() > 1) {
+                    errors.add("Separator char is not a single character.");
                 }
                 if (separator.containsKey(Constants.RULESET_CASING_SEPARATOR_ALLOW_LEADING) &&
                         !(separator.get(Constants.RULESET_CASING_SEPARATOR_ALLOW_LEADING) instanceof Boolean)) {
                     errors.add("The '" + Constants.RULESET_CASING_SEPARATOR_ALLOW_LEADING +
                             "' key in the '" + Constants.RULESET_CASING_SEPARATOR + "' option should be a boolean.");
                 }
+
+                for (String separatorKey : separator.keySet()) {
+                    if (!separatorKey.equals(Constants.RULESET_CASING_SEPARATOR_CHAR) && !separatorKey.equals(Constants.RULESET_CASING_SEPARATOR_ALLOW_LEADING)) {
+                        errors.add("Invalid option in separator object: " + separatorKey);
+                    }
+                }
+            } else if (!entry.getKey().equals(Constants.RULESET_CASING_TYPE) && !entry.getKey().equals(Constants.RULESET_CASING_DISALLOW_DIGITS)){
+                errors.add("Invalid function option for the casing function: " + entry.getKey());
             }
         }
 
@@ -92,7 +116,17 @@ public class CasingFunction extends LintFunction {
     }
 
     public FunctionResult executeFunction(LintTarget target) {
+        if (!(target.value instanceof String)) {
+            // This passes according to spec and tests
+            return new FunctionResult(true, null);
+        }
+
         String targetString = (String) target.value;
+        if (targetString.isEmpty()) {
+            // This passes according to spec and tests
+            return new FunctionResult(true, null);
+        }
+
         boolean allowLeading = Constants.RULESET_CASING_SEPARATOR_ALLOW_LEADING_DEFAULT;
         String separatorChar = "";
         if (options.containsKey(Constants.RULESET_CASING_SEPARATOR)) {
@@ -120,7 +154,7 @@ public class CasingFunction extends LintFunction {
     private String getPattern(Map<String, Object> options) {
         String baseCase = (String) options.get(Constants.RULESET_CASING_TYPE);
 
-        boolean allowdigits = false;
+        boolean allowdigits = true;
         if (options.containsKey(Constants.RULESET_CASING_DISALLOW_DIGITS)) {
             allowdigits = !(boolean) options.get(Constants.RULESET_CASING_DISALLOW_DIGITS);
         }
@@ -152,10 +186,16 @@ public class CasingFunction extends LintFunction {
         }
 
         Map<String, Object> separator = (Map<String, Object>) options.get(Constants.RULESET_CASING_SEPARATOR);
-        String separatorChar = separator.get(Constants.RULESET_CASING_SEPARATOR_CHAR).toString();
-        boolean allowLeading = (boolean) separator.get(Constants.RULESET_CASING_SEPARATOR_ALLOW_LEADING);
+        String separatorChar = null;
+        if (separator.containsKey(Constants.RULESET_CASING_SEPARATOR_CHAR)) {
+            separatorChar = separator.get(Constants.RULESET_CASING_SEPARATOR_CHAR).toString();
+        }
+        boolean allowLeading = false;
+        if (separator.containsKey(Constants.RULESET_CASING_SEPARATOR_ALLOW_LEADING)) {
+            allowLeading = (boolean) separator.get(Constants.RULESET_CASING_SEPARATOR_ALLOW_LEADING);
+        }
 
-        String separatorPattern = "[" + Pattern.quote(separatorChar) + "]";
+        String separatorPattern = separatorChar != null ? "[" + Pattern.quote(separatorChar) + "]" : "";
         String leadingSeparatorPattern = allowLeading ? separatorPattern + "?" : "";
 
         return "^" + leadingSeparatorPattern + pattern + "(?:" + separatorPattern + pattern + ")*$";

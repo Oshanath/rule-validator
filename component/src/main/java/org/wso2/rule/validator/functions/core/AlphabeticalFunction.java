@@ -65,7 +65,8 @@ public class AlphabeticalFunction extends LintFunction {
         Object value = target.value;
 
         if (!(value instanceof List) && !(value instanceof Map)) {
-            return new FunctionResult(false, target.getTargetName() + " Value is not a list or a map");
+            // According to spec and tests
+            return new FunctionResult(true, null);
         }
         if (value instanceof Map) {
             if (isAlphabetical((Map) value)) {
