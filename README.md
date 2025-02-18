@@ -9,11 +9,13 @@
 WSO2 Rule validator supports most features that Spectral itself does. With the exception of a few listed below.
 
 1. [_**given**_](https://docs.stoplight.io/docs/spectral/d3482ff0ccae9-rules#rules-properties) path is a JSON Path. But currently WSO2 Rule Validator does not support [JSON Path Plus](https://github.com/JSONPath-Plus/JSONPath) features, even though Spectral does.
+   - Object access should always be done inside single quotes \(paths\['/order'\]\)
 2. All [core functions](https://docs.stoplight.io/docs/spectral/cb95cf0d26b83-core-functions) except [UnreferecedReusableObject](https://docs.stoplight.io/docs/spectral/cb95cf0d26b83-core-functions#unreferencedreusableobject) and [typedEnum](https://docs.stoplight.io/docs/spectral/cb95cf0d26b83-core-functions#typedenum) are supported.
 3. Custom functions are not supported.
 4. References ($ref) are not supported.
 5. The core function "pattern" allows you to define regex patterns and check whether a certain lint target matches it or not.
    - _**In YAML rulesets, always define the regex pattern inside single quotes.**_
+   - All regex should be valid regex Java regex, which is different from JavaScript regex used in Stoplight Spectral.
 6. Extends and overrides are currently not supported
 7. Parser options are not supported
 8. Only Async API and Open API are supported (all versions)
