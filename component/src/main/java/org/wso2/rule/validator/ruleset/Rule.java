@@ -18,7 +18,6 @@
 package org.wso2.rule.validator.ruleset;
 
 import org.apache.commons.lang3.StringUtils;
-import org.wso2.rule.validator.Constants;
 import org.wso2.rule.validator.DiagnosticSeverity;
 
 import java.util.ArrayList;
@@ -38,6 +37,8 @@ public class Rule {
     public List<String> given;
     public List<Format> formats;
     private final List<Format> rulesetFormats;
+    private boolean initialized = true;
+    private String initializationErrorMessage = "";
 
     public Rule(String name, Map<String, Object> ruleData, Map<String, RulesetAliasDefinition> aliases,
                 List<Format> rulesetFormats) {
@@ -85,11 +86,25 @@ public class Rule {
         if (thenObject instanceof List) {
             this.then = new ArrayList<>();
             for (Object thenItem : (List<Object>) thenObject) {
-                this.then.add(new RuleThen((Map<String, Object>) thenItem));
+                RuleThen ruleThen = new RuleThen((Map<String, Object>) thenItem);
+                if (ruleThen.isInitialized()) {
+                    this.then.add(ruleThen);
+                } else {
+                    this.initialized = false;
+                    this.initializationErrorMessage = ruleThen.getInitializationErrorMessage();
+                    return;
+                }
             }
         } else if (thenObject instanceof Map) {
             this.then = new ArrayList<>();
-            this.then.add(new RuleThen((Map<String, Object>) thenObject));
+            RuleThen ruleThen = new RuleThen((Map<String, Object>) thenObject);
+            if (ruleThen.isInitialized()) {
+                this.then.add(ruleThen);
+            } else {
+                this.initialized = false;
+                this.initializationErrorMessage = ruleThen.getInitializationErrorMessage();
+                return;
+            }
         }
 
         if (givenObject instanceof List) {
@@ -99,24 +114,15 @@ public class Rule {
             this.given.add((String) givenObject);
         }
 
-        // resolve given aliases
-        List<String> resolvedGiven = new ArrayList<>();
-        for (String given : this.given) {
-            if (given.startsWith(Constants.ALIAS_PREFIX)) {
-                List<Format> aliasFormats;
-                if (!this.formats.isEmpty()) {
-                    aliasFormats = this.formats;
-                } else if (!this.rulesetFormats.isEmpty()) {
-                    aliasFormats = this.rulesetFormats;
-                } else {
-                    aliasFormats = null;
-                }
-                resolvedGiven.addAll(RulesetAliasDefinition.resolveAliasGiven(given, aliases, aliasFormats));
-            } else {
-                resolvedGiven.add(given);
-            }
-        }
-        this.given = resolvedGiven;
+        // Aliases are resolved when document is being validated
+    }
+
+    public boolean isInitialized() {
+        return initialized;
+    }
+
+    public String getInitializationErrorMessage() {
+        return initializationErrorMessage;
     }
 
 }

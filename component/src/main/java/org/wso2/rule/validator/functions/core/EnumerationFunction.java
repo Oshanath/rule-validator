@@ -46,16 +46,38 @@ public class EnumerationFunction extends LintFunction {
             return errors;
         }
 
-        if (!options.containsKey("values")) {
+        if (!options.containsKey(Constants.RULESET_ENUMERATION_VALUES)) {
             errors.add("Enumeration function requires the set of values.");
             return errors;
+        }
+
+        if (!(options.get(Constants.RULESET_ENUMERATION_VALUES) instanceof List)) {
+            errors.add("Enumeration function values options needs to be a list");
+            return errors;
+        }
+
+        List<Object> values = (List<Object>) options.get(Constants.RULESET_ENUMERATION_VALUES);
+        if (values.size() == 0) {
+            errors.add("Enumeration function values options cannot be empty");
+            return errors;
+        }
+
+        for (String option : options.keySet()) {
+            if (!option.equals(Constants.RULESET_ENUMERATION_VALUES)) {
+                errors.add("Enumeration function does not support option: " + option);
+            }
         }
 
         return errors;
     }
 
     public FunctionResult executeFunction(LintTarget target) {
-        String[] values = (String[]) options.get(Constants.RULESET_ENUMERATION_VALUES);
+        List<String> values = (List<String>) options.get(Constants.RULESET_ENUMERATION_VALUES);
+
+        if (!(target.value instanceof Integer) && !(target.value instanceof String)) {
+            return new FunctionResult(true, null);
+        }
+
         for (String value : values) {
             if (target.value.equals(value)) {
                 return new FunctionResult(true, null);

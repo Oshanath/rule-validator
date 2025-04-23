@@ -32,6 +32,7 @@ import org.wso2.rule.validator.ruleset.Format;
 import org.wso2.rule.validator.ruleset.Rule;
 import org.wso2.rule.validator.ruleset.RuleThen;
 import org.wso2.rule.validator.ruleset.Ruleset;
+import org.wso2.rule.validator.ruleset.RulesetAliasDefinition;
 import org.wso2.rule.validator.utils.Util;
 
 import java.util.ArrayList;
@@ -47,7 +48,7 @@ import java.util.regex.Pattern;
 public class Document {
 
     private String documentString;
-    private Object document;
+    private Object document = null;
     List<Format> formats;
 
     public Document(String documentString) {
@@ -86,7 +87,31 @@ public class Document {
         }
     }
 
+    public boolean isNull() {
+        return this.document == null;
+    }
+
     public List<LintResult> lint(Ruleset ruleset) throws InvalidRulesetException {
+
+        for (Rule rule : ruleset.rules.values()) {
+            // resolve given aliases
+            List<String> resolvedGiven = new ArrayList<>();
+            for (String given : rule.given) {
+                if (given.startsWith(Constants.ALIAS_PREFIX)) {
+                    List<Format> aliasFormats;
+                    if (this.formats != null && !this.formats.isEmpty()) {
+                        aliasFormats = this.formats;
+                    } else {
+                        aliasFormats = null;
+                    }
+                    resolvedGiven.addAll(RulesetAliasDefinition
+                            .resolveAliasGiven(given, ruleset.aliases, aliasFormats));
+                } else {
+                    resolvedGiven.add(given);
+                }
+            }
+            rule.given = resolvedGiven;
+        }
 
         List<LintResult> results = new ArrayList<>();
 
@@ -174,8 +199,6 @@ public class Document {
                         lintTargets.add(new LintTarget(new ArrayList<>(Arrays.asList(String.valueOf(i))),
                                 String.valueOf(i)));
                     }
-                } else {
-                    throw new RuntimeException("Node is not a Map or List but the field is @key");
                 }
             } else if (then.field.startsWith(Constants.JSON_PATH_ROOT)) {
                 Configuration config = Configuration.builder().options(Option.AS_PATH_LIST).build();

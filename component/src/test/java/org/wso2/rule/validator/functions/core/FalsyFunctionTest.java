@@ -15,6 +15,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.wso2.rule.validator.functions.core;
 
 import org.junit.jupiter.api.Test;
@@ -33,7 +34,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.fail;
 
 public class FalsyFunctionTest {
-    public final FalsyFunction falsy = new FalsyFunction(null);
+    private final FalsyFunction falsy = new FalsyFunction(null);
 
     @Test
     public void givenFalsyInputsShouldReturnNoErrorMessage() {
@@ -72,7 +73,7 @@ public class FalsyFunctionTest {
 
     @Test
     public void validationTestForInvalidOptions() {
-        Map<String, Object> invalidOption = Map.of("unsupportedKey", true); // Unsupported key
+        Map<String, Object> invalidOption = Map.of("unsupportedKey", true);
 
         FalsyFunction function = new FalsyFunction(invalidOption);
         LintTarget target = new LintTarget(new ArrayList<>(), null);

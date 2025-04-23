@@ -16,7 +16,9 @@
  * under the License.
  */
 package org.wso2.rule.validator.ruleset;
+
 import org.wso2.rule.validator.Constants;
+import org.wso2.rule.validator.InvalidRulesetException;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -32,6 +34,8 @@ public class Ruleset {
     private boolean hasComplexAliases;
     public List<Format> formats;
     private List<Ruleset> extendsRulesets;
+    private boolean initialized = true;
+    private String initializationErrorMessage = "";
 
     public Ruleset(Map<String, Object> datamap) {
         this.rules = new HashMap<>();
@@ -60,66 +64,32 @@ public class Ruleset {
                     this.hasComplexAliases = true;
                 }
             }
-            resolveAliasesInAliases();
+            try {
+                RulesetAliasDefinition.resolveAliasesInAliases(this.aliases);
+            } catch (InvalidRulesetException e) {
+                // Ignore. Should be caught in the ruleset validation
+            }
         }
 
         // Read rules
         for (Map.Entry<String, Object> entry : ruleMap.entrySet()) {
             String ruleName = entry.getKey();
             Rule rule = new Rule(ruleName, (Map<String, Object>) entry.getValue(), this.aliases, this.formats);
-            this.rules.put(ruleName, rule);
-        }
-    }
-
-    private void resolveAliasesInAliases() {
-        while (!allAliasesResolved()) {
-            for (RulesetAliasDefinition alias : this.aliases.values()) {
-                if (!alias.isComplexAlias()) {
-                    List<String> resolvedGiven = new ArrayList<>();
-                    for (String given : alias.given) {
-                        if (given.startsWith(Constants.ALIAS_PREFIX)) {
-                            resolvedGiven.addAll(RulesetAliasDefinition.resolveAliasGiven(given, this.aliases, null));
-                        } else {
-                            resolvedGiven.add(given);
-                        }
-                    }
-                    alias.given = resolvedGiven;
-                } else {
-                    for (RulesetAliasTarget target: alias.targets) {
-                        List<String> resolvedGiven = new ArrayList<>();
-                        for (String given: target.given) {
-                            if (given.startsWith(Constants.ALIAS_PREFIX)) {
-                                resolvedGiven.addAll(RulesetAliasDefinition.resolveAliasGiven(
-                                        given, this.aliases, target.formats));
-                            } else {
-                                resolvedGiven.add(given);
-                            }
-                        }
-                        target.given = resolvedGiven;
-                    }
-                }
-            }
-        }
-    }
-
-    private boolean allAliasesResolved() {
-        for (RulesetAliasDefinition alias : this.aliases.values()) {
-            if (!alias.isComplexAlias()) {
-                for (String given : alias.given) {
-                    if (given.startsWith(Constants.ALIAS_PREFIX)) {
-                        return false;
-                    }
-                }
+            if (rule.isInitialized()) {
+                this.rules.put(ruleName, rule);
             } else {
-                for (RulesetAliasTarget target: alias.targets) {
-                    for (String given: target.given) {
-                        if (given.startsWith(Constants.ALIAS_PREFIX)) {
-                            return false;
-                        }
-                    }
-                }
+                this.initialized = false;
+                this.initializationErrorMessage = rule.getInitializationErrorMessage();
+                return;
             }
         }
-        return true;
+    }
+
+    public boolean isInitialized() {
+        return initialized;
+    }
+
+    public String getInitializationErrorMessage() {
+        return initializationErrorMessage;
     }
 }

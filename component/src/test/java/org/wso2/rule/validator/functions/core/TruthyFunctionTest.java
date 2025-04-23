@@ -15,6 +15,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.wso2.rule.validator.functions.core;
 
 import org.junit.jupiter.api.Test;
@@ -73,7 +74,7 @@ public class TruthyFunctionTest {
 
     @Test
     public void validationTestForInvalidOptions() {
-        Map<String, Object> invalidOption = Map.of("unsupportedKey", true); // Unsupported key
+        Map<String, Object> invalidOption = Map.of("unsupportedKey", true);
 
         TruthyFunction function = new TruthyFunction(invalidOption);
         LintTarget target = new LintTarget(new ArrayList<>(), null);

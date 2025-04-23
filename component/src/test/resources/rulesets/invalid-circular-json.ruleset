@@ -1,0 +1,16 @@
+{
+  aliases: {
+    Root: ['#Info'],
+    Info: ['#Root.test'],
+    Contact: ['#Info'],
+    Test: ['#Contact.test'],
+  },
+  rules: {
+    'valid-path': {
+      given: '#Test',
+      then: {
+        function: truthy,
+      },
+    },
+  },
+}

@@ -21,13 +21,18 @@ package org.wso2.rule.validator.validator.ruleset;
 import com.jayway.jsonpath.InvalidPathException;
 import com.jayway.jsonpath.JsonPath;
 import org.wso2.rule.validator.Constants;
+import org.wso2.rule.validator.InvalidRulesetException;
 import org.wso2.rule.validator.functions.FunctionFactory;
+import org.wso2.rule.validator.functions.InvalidCoreFunctionException;
 import org.wso2.rule.validator.functions.LintFunction;
 import org.wso2.rule.validator.ruleset.Format;
+import org.wso2.rule.validator.ruleset.RulesetAliasDefinition;
+import org.wso2.rule.validator.ruleset.RulesetAliasTarget;
 import org.wso2.rule.validator.validator.RulesetValidationError;
 
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.regex.Matcher;
@@ -44,6 +49,16 @@ public abstract class RulesetValidator {
         if (ruleset == null) {
             errors.add(new RulesetValidationError("", "Ruleset is empty."));
             return errors;
+        }
+
+        // Validate aliases
+        if (ruleset.containsKey("aliases")) {
+            if (!(ruleset.get("aliases") instanceof Map)) {
+                errors.add(new RulesetValidationError("", "Aliases object should be a map"));
+            } else {
+                Map<String, Object> aliases = (Map<String, Object>) ruleset.get("aliases");
+                errors.addAll(validateAliases(aliases));
+            }
         }
 
         // Validate rules
@@ -82,6 +97,54 @@ public abstract class RulesetValidator {
 
         // Validate Formats
         errors.addAll(validateFormats("", ruleset));
+
+        return errors;
+    }
+
+    private static List<RulesetValidationError> validateAliases(Map<String, Object> aliasMap) {
+
+        List<RulesetValidationError> errors = new ArrayList<>();
+        Map<String, RulesetAliasDefinition> aliases = new LinkedHashMap<>();
+
+        for (Map.Entry<String, Object> entry : aliasMap.entrySet()) {
+            String aliasName = entry.getKey();
+            Object alias = entry.getValue();
+            if (!(alias instanceof List) && !(alias instanceof Map)) {
+                errors.add(new RulesetValidationError(aliasName, "Invalid alias object."));
+                return errors;
+            }
+
+            aliases.put(aliasName, new RulesetAliasDefinition(aliasName, alias));
+        }
+
+        // Check alias resolution and circular dependencies
+        try {
+            RulesetAliasDefinition.resolveAliasesInAliases(aliases);
+        } catch (InvalidRulesetException e) {
+            errors.add(new RulesetValidationError("", e.getMessage()));
+            return errors;
+        }
+        if (!RulesetAliasDefinition.allAliasesResolved(aliases)) {
+            errors.add(new RulesetValidationError("", "Circular alias dependency detected."));
+            return errors;
+        }
+
+        // Check all resolved given for unsupported json paths
+        for (Map.Entry<String, RulesetAliasDefinition> entry : aliases.entrySet()) {
+            for (RulesetAliasTarget target : entry.getValue().targets) {
+                for (String given : target.given) {
+                    if (!validateJsonPath(given)) {
+                        errors.add(new RulesetValidationError(entry.getKey(), "Invalid json path in resolved alias"));
+                    }
+                }
+            }
+
+            for (String given : entry.getValue().getGiven()) {
+                if (!validateJsonPath(given)) {
+                    errors.add(new RulesetValidationError(entry.getKey(), "Invalid json path in resolved alias"));
+                }
+            }
+        }
 
         return errors;
     }
@@ -236,6 +299,7 @@ public abstract class RulesetValidator {
             String function = (String) then.get(Constants.RULESET_FUNCTION);
             if (!FunctionFactory.isFunction(function)) {
                 errors.add(new RulesetValidationError(ruleName, "Unknown function: " + function));
+                return errors;
             }
         }
 
@@ -250,7 +314,13 @@ public abstract class RulesetValidator {
                         "'functionOptions' field of a then object should be an object"));
             }
         }
-        LintFunction lintFunction = FunctionFactory.getFunction(function, functionOptions);
+        LintFunction lintFunction;
+        try {
+            lintFunction = FunctionFactory.getFunction(function, functionOptions);
+        } catch (InvalidCoreFunctionException e) {
+            errors.add(new RulesetValidationError(ruleName, e.getMessage()));
+            return errors;
+        }
         List<String> functionErrors = lintFunction.validateFunctionOptions();
         for (String error : functionErrors) {
             errors.add(new RulesetValidationError(ruleName, error));

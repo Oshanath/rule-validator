@@ -18,6 +18,7 @@
 package org.wso2.rule.validator.ruleset;
 
 import org.wso2.rule.validator.Constants;
+import org.wso2.rule.validator.InvalidRulesetException;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -36,23 +37,27 @@ public class RulesetAliasDefinition {
     private String description;
     public List<RulesetAliasTarget> targets;
     private boolean isComplexAlias;
-    public List<String> given;
+    private List<String> given;
 
     public RulesetAliasDefinition(String name, Object aliasObject) {
         this.name = name;
+        this.given = new ArrayList<>();
+        this.targets = new ArrayList<>();
 
         if (aliasObject instanceof List) {
             isComplexAlias = false;
-            this.given = (List<String>) aliasObject;
+            this.given = new ArrayList<>((List<String>) aliasObject);
         } else if (aliasObject instanceof Map) {
             isComplexAlias = true;
             Map<String, Object> aliasMap = (Map<String, Object>) aliasObject;
             this.description = (String) aliasMap.get(Constants.DESCRIPTION);
             this.targets = new ArrayList<>();
             List<Object> targets = (List<Object>) aliasMap.get(Constants.RULESET_ALIAS_TARGETS);
-            for (Object target : targets) {
-                RulesetAliasTarget aliasTarget = new RulesetAliasTarget(target);
-                this.targets.add(aliasTarget);
+            if (targets != null) {
+                for (Object target : targets) {
+                    RulesetAliasTarget aliasTarget = new RulesetAliasTarget(target);
+                    this.targets.add(aliasTarget);
+                }
             }
         }
     }
@@ -62,7 +67,7 @@ public class RulesetAliasDefinition {
     }
 
     public static List<String> resolveAliasGiven(String given, Map<String, RulesetAliasDefinition> aliases,
-                                                      List<Format> formats) {
+                                                      List<Format> formats) throws InvalidRulesetException {
 
         List<String> resolved = new ArrayList<>();
 
@@ -75,6 +80,9 @@ public class RulesetAliasDefinition {
         }
         String aliasName = matcher.group(0);
         RulesetAliasDefinition alias = aliases.get(aliasName.substring(1));
+        if (alias == null) {
+            throw new InvalidRulesetException("Alias " + aliasName + " not found");
+        }
 
         if (alias.isComplexAlias()) {
             for (RulesetAliasTarget target : alias.targets) {
@@ -92,6 +100,68 @@ public class RulesetAliasDefinition {
         }
 
         return resolved;
+    }
+
+    public static void resolveAliasesInAliases(Map<String, RulesetAliasDefinition> aliases)
+            throws InvalidRulesetException {
+        for (int i = 0; i < aliases.size(); i++) {
+            if (!allAliasesResolved(aliases)) {
+                for (RulesetAliasDefinition alias : aliases.values()) {
+                    if (!alias.isComplexAlias()) {
+                        List<String> resolvedGiven = new ArrayList<>();
+                        for (String given : alias.given) {
+                            if (given.startsWith(Constants.ALIAS_PREFIX)) {
+                                resolvedGiven.addAll(RulesetAliasDefinition
+                                        .resolveAliasGiven(given, aliases, null));
+                            } else {
+                                resolvedGiven.add(given);
+                            }
+                        }
+                        alias.given = resolvedGiven;
+                    } else {
+                        for (RulesetAliasTarget target: alias.targets) {
+                            List<String> resolvedGiven = new ArrayList<>();
+                            for (String given: target.given) {
+                                if (given.startsWith(Constants.ALIAS_PREFIX)) {
+                                    resolvedGiven.addAll(RulesetAliasDefinition.resolveAliasGiven(
+                                            given, aliases, target.formats));
+                                } else {
+                                    resolvedGiven.add(given);
+                                }
+                            }
+                            target.given = resolvedGiven;
+                        }
+                    }
+                }
+            } else {
+                break;
+            }
+        }
+    }
+
+    public static boolean allAliasesResolved(Map<String, RulesetAliasDefinition> aliases) {
+        for (RulesetAliasDefinition alias : aliases.values()) {
+            if (!alias.isComplexAlias()) {
+                for (String given : alias.given) {
+                    if (given.startsWith(Constants.ALIAS_PREFIX)) {
+                        return false;
+                    }
+                }
+            } else {
+                for (RulesetAliasTarget target: alias.targets) {
+                    for (String given: target.given) {
+                        if (given.startsWith(Constants.ALIAS_PREFIX)) {
+                            return false;
+                        }
+                    }
+                }
+            }
+        }
+        return true;
+    }
+
+    public List<String> getGiven() {
+        return new ArrayList<>(given);
     }
 }
 

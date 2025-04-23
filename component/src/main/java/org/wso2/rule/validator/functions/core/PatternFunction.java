@@ -63,26 +63,31 @@ public class PatternFunction extends LintFunction {
         if (!options.containsKey(Constants.RULESET_PATTERN_MATCH) &&
                 !options.containsKey(Constants.RULESET_PATTERN_NOT_MATCH)) {
             errors.add("Pattern function requires either match or notMatch options");
+            return errors;
         }
 
         if (options.containsKey(Constants.RULESET_PATTERN_MATCH) &&
                 !(options.get(Constants.RULESET_PATTERN_MATCH) instanceof String)) {
             errors.add("Pattern function match option must be a string.");
+            return errors;
         }
 
         if (options.containsKey(Constants.RULESET_PATTERN_NOT_MATCH) &&
                 !(options.get(Constants.RULESET_PATTERN_NOT_MATCH) instanceof String)) {
             errors.add("Pattern function notMatch option must be a string.");
+            return errors;
         }
 
         if (options.containsKey(Constants.RULESET_PATTERN_MATCH) &&
                 !isValidRegex((String) options.get(Constants.RULESET_PATTERN_MATCH))) {
             errors.add("Pattern function match option is not a valid regex pattern.");
+            return errors;
         }
 
         if (options.containsKey(Constants.RULESET_PATTERN_NOT_MATCH) &&
                 !isValidRegex((String) options.get(Constants.RULESET_PATTERN_NOT_MATCH))) {
             errors.add("Pattern function notMatch option is not a valid regex pattern.");
+            return errors;
         }
 
         if (options.containsKey(Constants.RULESET_PATTERN_MATCH)) {
@@ -90,6 +95,7 @@ public class PatternFunction extends LintFunction {
                     (String) options.get(Constants.RULESET_PATTERN_MATCH));
             if (getFlagsFromFlagString(patternAndFlags.flags) == -1) {
                 errors.add("Pattern function match option contains invalid flags.");
+                return errors;
             }
         }
 
@@ -98,6 +104,7 @@ public class PatternFunction extends LintFunction {
                     (String) options.get(Constants.RULESET_PATTERN_NOT_MATCH));
             if (getFlagsFromFlagString(patternAndFlags.flags) == -1) {
                 errors.add("Pattern function notMatch option contains invalid flags.");
+                return errors;
             }
         }
 
@@ -106,7 +113,7 @@ public class PatternFunction extends LintFunction {
 
     private boolean isValidRegex(String regex) {
         try {
-            Pattern.compile(Pattern.quote(regex));
+            Pattern.compile(regex);
             return true;
         } catch (PatternSyntaxException e) {
             return false;
@@ -163,7 +170,7 @@ public class PatternFunction extends LintFunction {
 
         Pattern pattern = Pattern.compile(patternAndFlags.pattern, flags);
         Matcher matcher = pattern.matcher(value);
-        return matcher.matches();
+        return matcher.find();
     }
 
     public FunctionResult executeFunction(LintTarget target) {
@@ -171,10 +178,10 @@ public class PatternFunction extends LintFunction {
         Object notMatch = options.get(Constants.RULESET_PATTERN_NOT_MATCH);
 
         if (target.value == null) {
-            return new FunctionResult(false, target.getTargetName() + " is null");
+            return new FunctionResult(true, null);
         }
         if (!(target.value instanceof String)) {
-            return new FunctionResult(true, target.getTargetName() + " is not a string");
+            return new FunctionResult(true, null);
         }
 
         boolean matchResult = false;
@@ -218,12 +225,17 @@ public class PatternFunction extends LintFunction {
     @Override
     public void processFunctionOptions(Map<String, Object> options) {
         // Double backslashes are needed here because Java requires double backslashes for regex patterns
-        if (options.containsKey(Constants.RULESET_PATTERN_MATCH)) {
+        if (options == null) {
+            return;
+        }
+        if (options.containsKey(Constants.RULESET_PATTERN_MATCH) &&
+                options.get(Constants.RULESET_PATTERN_MATCH) instanceof String) {
             String match = (String) options.get(Constants.RULESET_PATTERN_MATCH);
             match = Util.doubleBackslashesAfterMatch(match);
             options.put(Constants.RULESET_PATTERN_MATCH, match);
         }
-        if (options.containsKey(Constants.RULESET_PATTERN_NOT_MATCH)) {
+        if (options.containsKey(Constants.RULESET_PATTERN_NOT_MATCH) &&
+                options.get(Constants.RULESET_PATTERN_NOT_MATCH) instanceof String) {
             String notMatch = (String) options.get(Constants.RULESET_PATTERN_NOT_MATCH);
             notMatch = Util.doubleBackslashesAfterMatch(notMatch);
             options.put(Constants.RULESET_PATTERN_NOT_MATCH, notMatch);

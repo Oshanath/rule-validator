@@ -62,9 +62,9 @@ public class FalsyFunction extends LintFunction {
             }
         } else if (target.value instanceof Map) {
             if (((Map) target.value).isEmpty()) {
-                return new FunctionResult(true, "property \"" + target.getTargetName() + "\" must be falsy");
+                return new FunctionResult(true, null);
             } else {
-                return new FunctionResult(false, null);
+                return new FunctionResult(false, "property \"" + target.getTargetName() + "\" must be falsy");
             }
         } else if (target.value instanceof Boolean) {
             if (!(Boolean) target.value) {

@@ -19,6 +19,7 @@ package org.wso2.rule.validator.ruleset;
 
 import org.wso2.rule.validator.Constants;
 import org.wso2.rule.validator.functions.FunctionFactory;
+import org.wso2.rule.validator.functions.InvalidCoreFunctionException;
 import org.wso2.rule.validator.functions.LintFunction;
 
 import java.util.Map;
@@ -31,12 +32,28 @@ public class RuleThen {
     private String function;
     private Map<String, Object> functionOptions;
     public LintFunction lintFunction;
+    private boolean initialized = true;
+    private String initializationErrorMessage = "";
 
     public RuleThen(Map<String, Object> ruleThenData) {
         this.field = (String) ruleThenData.get(Constants.RULESET_FIELD);
         this.function = (String) ruleThenData.get(Constants.RULESET_FUNCTION);
         this.functionOptions = (Map<String, Object>) ruleThenData.get(Constants.RULESET_FUNCTION_OPTIONS);
+        try {
+            this.lintFunction = FunctionFactory.getFunction(this.function, this.functionOptions);
+        } catch (InvalidCoreFunctionException e) {
+            initialized = false;
+            initializationErrorMessage = e.getMessage();
+            return;
+        }
+        initialized = true;
+    }
 
-        this.lintFunction = FunctionFactory.getFunction(this.function, this.functionOptions);
+    public boolean isInitialized() {
+        return initialized;
+    }
+
+    public String getInitializationErrorMessage() {
+        return initializationErrorMessage;
     }
 }
